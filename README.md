@@ -29,7 +29,8 @@ Windows 上播放或编辑 ASS/SSA 字幕时，缺少对应的字体文件会导
 
 | 文件 | 用途 |
 |------|------|
-| `ass_fonts_loader.py` | **唯一程序文件** — GUI 界面 + 扫描/加载/卸载完整流程（约 580 行） |
+| `ass_fonts_loader.py` | **程序源码** — GUI 界面 + 扫描/加载/卸载完整流程（约 580 行） |
+| `dist/ASS-Fonts-Loader.exe` | **打包好的可执行文件** — 双击即用，无需安装 Python（约 8 MB） |
 | `README.md` | 本文档 |
 
 程序完全独立，无其他 Python 文件依赖，clone 即用。
@@ -37,6 +38,12 @@ Windows 上播放或编辑 ASS/SSA 字幕时，缺少对应的字体文件会导
 ---
 
 ## 2. 快速开始
+
+### 方式一：直接运行 exe（推荐）
+
+从 GitHub 下载 [`dist/ASS-Fonts-Loader.exe`](dist/ASS-Fonts-Loader.exe)（约 8 MB），**双击运行**即可，无需安装任何环境。
+
+### 方式二：运行源码
 
 ### 主程序（推荐）
 
