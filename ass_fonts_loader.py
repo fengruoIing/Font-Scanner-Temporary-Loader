@@ -364,11 +364,16 @@ class FontScannerApp:
 
     def get_fonts_from_file(self, filepath):
         fonts = set()
-        try:
-            with open(filepath, 'r', encoding='utf-8-sig') as fh:
-                content = fh.read()
-        except UnicodeDecodeError:
-            with open(filepath, 'r', encoding='gbk') as fh:
+        content = None
+        for encoding in ['utf-8-sig', 'utf-8', 'utf-16', 'gbk', 'gb2312']:
+            try:
+                with open(filepath, 'r', encoding=encoding) as fh:
+                    content = fh.read()
+                break
+            except (UnicodeDecodeError, UnicodeError):
+                continue
+        if content is None:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as fh:
                 content = fh.read()
 
         style_pattern = r'\[V4\+?\s*Styles\](.*?)(?=\[|$)'
