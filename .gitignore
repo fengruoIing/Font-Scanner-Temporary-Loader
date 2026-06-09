@@ -1,3 +1,7 @@
 __pycache__/
 .reasonix/
 reasonix.toml
+*.spec
+build/
+dist/
+.ass_fonts_config.json

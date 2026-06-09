@@ -1,6 +1,8 @@
-﻿import os
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
+import os
 import re
+import sys
+import json
 import ctypes
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
@@ -198,14 +200,43 @@ class FontTempLoader:
 
 
 class FontScannerApp:
+    CONFIG_FILE = os.path.join(
+        os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__)),
+        ".ass_fonts_config.json"
+    )
+
+    @staticmethod
+    def _load_config():
+        try:
+            with open(FontScannerApp.CONFIG_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return {}
+
+    def _save_config(self):
+        data = {
+            "subtitle_folder": self.folder_var.get(),
+            "font_source_folder": self.font_folder_var.get()
+        }
+        try:
+            with open(self.CONFIG_FILE, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False)
+        except Exception:
+            pass  # 保存配置失败不影响主程序
+
     def __init__(self, root):
         self.root = root
         self.root.title("ASS/SSA \u5b57\u4f53\u626b\u63cf & \u4e34\u65f6\u52a0\u8f7d\u5de5\u5177")
         self.root.geometry("1100x800")
         self.root.minsize(900, 650)
 
-        self.folder_var = tk.StringVar(value="\u672a\u9009\u62e9 (\u5b57\u5e55\u6587\u4ef6\u5939)")
-        self.font_folder_var = tk.StringVar(value="\u672a\u9009\u62e9 (\u5b57\u4f53\u6e90\u6587\u4ef6\u5939)")
+        # 加载上次退出时保存的文件夹路径
+        saved = self._load_config()
+        sub_default = saved.get("subtitle_folder", "\u672a\u9009\u62e9 (\u5b57\u5e55\u6587\u4ef6\u5939)")
+        font_default = saved.get("font_source_folder", "\u672a\u9009\u62e9 (\u5b57\u4f53\u6e90\u6587\u4ef6\u5939)")
+
+        self.folder_var = tk.StringVar(value=sub_default)
+        self.font_folder_var = tk.StringVar(value=font_default)
 
         self.temp_loader = FontTempLoader()
         self.file_fonts_dict = {}
@@ -353,14 +384,17 @@ class FontScannerApp:
             msg = f"\u5b57\u5e55\u6587\u4ef6\u5939\u5df2\u53d8\u66f4:\n\n\u65b0: {folder}\n\u65e7: {old_folder}\n\n\u662f\u5426\u9700\u8981\u91cd\u65b0\u626b\u63cf\u5b57\u4f53\uff1f"
             if messagebox.askyesno("\u91cd\u65b0\u626b\u63cf\uff1f", msg):
                 self.folder_var.set(folder)
+                self._save_config()
                 self.start_scan()
                 return
         self.folder_var.set(folder)
+        self._save_config()
 
     def browse_font_folder(self):
         folder = filedialog.askdirectory(title="\u8bf7\u9009\u62e9\u5b57\u4f53\u6e90\u6587\u4ef6\u5939\uff08\u5b58\u653e .ttf/.otf \u7b49\uff09")
         if folder:
             self.font_folder_var.set(folder)
+            self._save_config()
 
     def get_fonts_from_file(self, filepath):
         fonts = set()
