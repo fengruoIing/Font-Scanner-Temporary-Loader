@@ -216,7 +216,8 @@ class FontScannerApp:
     def _save_config(self):
         data = {
             "subtitle_folder": self.folder_var.get(),
-            "font_source_folder": self.font_folder_var.get()
+            "font_source_folder": self.font_folder_var.get(),
+            "loaded_fonts": [(name, path) for name, path in self.temp_loader.loaded_fonts]
         }
         try:
             with open(self.CONFIG_FILE, 'w', encoding='utf-8') as f:
@@ -245,6 +246,48 @@ class FontScannerApp:
 
         self._setup_style()
         self.create_widgets()
+
+        # 启动时清理上一次崩溃残留的注册表字体项
+        self._cleanup_stale_registry_entries()
+
+        # 拦截窗口关闭事件 → 自动卸载后退出
+        self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
+
+    def _cleanup_stale_registry_entries(self):
+        """启动时清理上次崩溃残留的 HKCU 注册表字体项。"""
+        saved = self._load_config()
+        stale = saved.get("loaded_fonts", [])
+        if not stale:
+            return
+        reg_path = r"Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+        cleaned = 0
+        for font_name, font_file in stale:
+            try:
+                key_name = f"{font_name} (TrueType)"
+                hkey = winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_path, 0, winreg.KEY_WRITE)
+                try:
+                    # 读取值，确认指向同一个文件再删除（避免误删同名用户手动安装的字体）
+                    val, _ = winreg.QueryValueEx(hkey, key_name)
+                    if os.path.normpath(val) == os.path.normpath(font_file):
+                        winreg.DeleteValue(hkey, key_name)
+                        cleaned += 1
+                except FileNotFoundError:
+                    pass  # 该注册表项已被清理
+                hkey.Close()
+            except Exception:
+                pass
+        if cleaned:
+            # 发送字体刷新消息
+            try:
+                ctypes.windll.user32.SendMessageW(0xFFFF, 0x001D, 0, 0)
+            except Exception:
+                pass
+
+    def _on_closing(self):
+        """窗口关闭时自动卸载所有临时字体，再退出。"""
+        if self.temp_loader.loaded_fonts:
+            self.temp_loader.unload_all()
+        self.root.destroy()
 
     def _setup_style(self):
         style = ttk.Style()
@@ -589,6 +632,7 @@ class FontScannerApp:
         self.status_var.set(f"\u5f53\u524d\u5df2\u6709 {count} \u79cd\u5b57\u4f53\u751f\u6548\uff0c\u8bf7\u91cd\u542f\u64ad\u653e\u5668\u67e5\u770b\u6548\u679c")
         self.update_loaded_fonts_display()
         self.status_icon.config(text="\U0001f7e2", fg="#27ae60")
+        self._save_config()
 
     def temp_unload_all(self):
         if not self.temp_loader.loaded_fonts:
@@ -612,6 +656,7 @@ class FontScannerApp:
             self.status_var.set("\u6240\u6709\u4e34\u65f6\u5b57\u4f53\u5df2\u5378\u8f7d\uff0c\u7cfb\u7edf\u6062\u590d\u539f\u72b6")
             self.update_loaded_fonts_display()
             self.status_icon.config(text="\U0001f7e2", fg="#27ae60")
+            self._save_config()
 
 if __name__ == "__main__":
     root = tk.Tk()
